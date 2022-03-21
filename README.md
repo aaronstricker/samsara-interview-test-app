@@ -7,4 +7,7 @@ Samsara: https://developers.samsara.com/reference/overview
 Plotly: https://github.com/plotly/plotly.js/tree/master/dist
 
 Requires a proxy to handshake the API request, due to CORS
-Run `lcp --proxyUrl https://api.samsara.com` before starting server
+Run in cmd before starting local server
+```
+lcp --proxyUrl https://api.samsara.com
+```
