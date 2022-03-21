@@ -1,0 +1,80 @@
+<html>
+    <head> <!---->
+    <meta http-equiv="content-type" content="text/html; charset=UTF-8" />
+    <script src="plotly.min.js"></script> <!--https://github.com/plotly/plotly.js/tree/master/dist--> 
+    <script src="plotly-locale-de-ch.js"></script>
+    <script>Plotly.setPlotConfig({locale: 'de-CH'})</script>
+    <link rel="stylesheet" type="text/css" href="styles.css">
+    <script type="module" src="getCarData.js"></script>
+    <script type="module" src="getSensorTemp.js"></script>
+    <!--<script src="getDoorStatus.js"></script>-->
+    </head>
+    <body>
+    <div class="wrapper">
+        <div id="chart"></div>
+        <script>
+            function generateHeaders(){ 
+                // generates headers for the fetch calls - this is the same for each call
+                return new Headers(
+                    {
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer samsara_api_lvEk1YOK3UDtQmPKIObOF5Le4vvsZC'
+                    }
+                );
+            }
+
+            function generateOptions(myBody){ 
+                // generates options for the fetch calls - this is the same for each except the body
+                var options = {
+                    method: 'POST',
+                    headers: generateHeaders(),
+                    redirect: 'follow',
+                    body: myBody
+                    //JSON.stringify({sensors: [278018084739875]})
+                };
+                return options;
+            }
+
+            async function getSensorTemp(){
+                var myBody = JSON.stringify({sensors: [278018084739875]});
+                return fetch('http://localhost:8010/proxy/v1/sensors/temperature', generateOptions(myBody))
+                    .then(r => r.json())
+                    .catch(err => console.error(err));
+            }
+
+            async function getData() {
+                /* 
+                get data from api and format
+                limit to once every 5 seconds
+                
+                var sensorTempJson = await getSensorTemp();
+                console.log(sensorTempJson)
+                var sensorTemp = sensorTempJson.sensors[0].ambientTemperature / 1000 * (9 / 5) + 32;
+                console.log('Converted final temp: ' + sensorTemp + ' degrees F')
+                return sensorTemp;
+                */
+                return Math.random();
+            }
+            
+            Plotly.newPlot('chart',[{y:[getData()],type:'line'}]);
+            
+            var cnt = 0;
+
+            setInterval(function(){
+
+                Plotly.extendTraces('chart',{ y:[[getData()]]}, [0]);
+                cnt++;
+                if(cnt > 500) {
+                    Plotly.relayout('chart',{
+                        xaxis: {
+                            range: [cnt-500,cnt]
+                        }
+                    });
+                }
+            },15);
+        </script>
+        </script>
+    </div>
+    </body>
+</html>
