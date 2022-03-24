@@ -1,7 +1,7 @@
 <html>
-    <head> <!---->
+    <head> <!-- HTML Page setup, with loading in different scripts that will be used-->
     <meta http-equiv="content-type" content="text/html; charset=UTF-8" />
-    <script src="plotly.min.js"></script> <!--https://github.com/plotly/plotly.js/tree/master/dist--> 
+    <script src="plotly.min.js"></script> <!--Plotting tool: https://github.com/plotly/plotly.js/tree/master/dist--> 
     <script>Plotly.setPlotConfig({locale: 'de-CH'})</script>
     <link rel="stylesheet" type="text/css" href="styles.css">
     </head>
@@ -11,8 +11,7 @@
 
         <div id="graph"></div>
         <script>
-            function generateHeaders(){ 
-                // generates headers for the fetch calls - this is the same for each call
+            function generateHeaders(){ // generates headers for the fetch calls - this is the same for each call
                 return new Headers(
                     {
                         'Accept': 'application/json',
@@ -22,23 +21,67 @@
                 );
             }
 
-            function generateOptions(myBody){ 
-                // generates options for the fetch calls - this is the same for each except the body
+            async function getSensorTempJSON(){ // gets raw Sensor Temps from Samsara API
+                console.log("getSensorTempJSON called")
                 var options = {
-                    method: 'POST',
-                    headers: generateHeaders(),
-                    redirect: 'follow',
-                    body: myBody
-                    //JSON.stringify({sensors: [278018084739875]})
+                        method: 'POST',
+                        headers: generateHeaders(),
+                        redirect: 'follow',
+                        body: JSON.stringify({sensors: [278018084739875]})  // https://developers.samsara.com/reference/v1getsensors: "sensors": [ { "id": 278018084469703, "name": "Door Sensor1", "macAddress": "fc:db:21:2a:7b:c7" }, { "id": 278018084739875, "name": "temp sensor 1", "macAddress": "fc:db:21:2e:9b:23" }
                 };
-                return options;
-            }
-
-            async function getSensorTemp(){
-                var myBody = JSON.stringify({sensors: [278018084739875]});
-                return fetch('http://localhost:8010/proxy/v1/sensors/temperature', generateOptions(myBody))
+                return fetch('http://localhost:8010/proxy/v1/sensors/temperature', options)
                     .then(r => r.json())
                     .catch(err => console.error(err));
+            }
+
+            async function getGatewayTempsJSON(){ // gets raw Gateway Temps from Samsara API
+                console.log("getGatewayTempsJSON called")
+                var options = {
+                        method: 'GET',
+                        headers: generateHeaders(),
+                        redirect: 'follow',
+                };
+                return fetch('http://localhost:8010/proxy/fleet/vehicles/stats/feed?types='
+                +'ambientAirTemperatureMilliC,engineCoolantTemperatureMilliC', options)
+                    .then(r => r.json())
+                    .catch(err => console.error(err));
+            }
+
+            async function convertCtoF(temp){ // converts Milli-Celcius to Fahrenheit
+                console.log("convertCtoF called")
+                return (temp / 1000.0) * (9.0 / 5.0) + 32.0;
+            }
+
+            async function extractTempFromJSON(tempType){
+                console.log("extractTempFromJSON called with tempType: " + tempType)
+                switch(tempType) {
+                    case "sensor":
+                        console.log("Sensor info: ")
+                        var sensorTempJson = await getSensorTempJSON();
+                        console.log(sensorTempJson)
+                        var tempRaw = sensorTempJson.sensors[0].ambientTemperature
+                        var convertedTemp = await convertCtoF(tempRaw);
+                        console.log("Sensor: raw: " +  tempRaw + " and converted: " + convertedTemp);
+                        return convertedTemp;
+
+                    case "ambientAirTemperatureMilliC":
+                        console.log("Gateway info: ")
+                        var gatewayTempJson = await getGatewayTempsJSON();
+                        console.log(gatewayTempJson);
+                        var tempRaw = gatewayTempJson.data[0].ambientAirTemperatureMilliC[0].value;
+                        var convertedTemp = await convertCtoF(tempRaw);
+                        console.log("ambientAirTemperatureMilliC: raw: " +  tempRaw + " and converted: " + convertedTemp);
+                        return convertedTemp;
+                    
+                    case "engineCoolantTemperatureMilliC":
+                        console.log("Gateway info: ")
+                        var gatewayTempJson = await getGatewayTempsJSON();
+                        console.log(gatewayTempJson);
+                        var tempRaw = gatewayTempJson.data[0].engineCoolantTemperatureMilliC[0].value;
+                        var convertedTemp = await convertCtoF(tempRaw);
+                        console.log("engineCoolantTemperatureMilliC: raw: " +  tempRaw + " and converted: " + convertedTemp);
+                        return convertedTemp;
+                }
             }
 
             async function getData() {
@@ -46,27 +89,53 @@
                 get data from api and format
                 limit to once every 5 seconds
                 */
-                var sensorTempJson = await getSensorTemp();
-                console.log(sensorTempJson)
-                var sensorTemp = sensorTempJson.sensors[0].ambientTemperature / 1000.0 * (9.0 / 5.0) + 32.0;
-                console.log('Converted final temp: ' + sensorTemp + ' degrees F')
-                return sensorTemp;
+                console.log("getData called")
+
+                var sensor                          = await extractTempFromJSON("sensor");
+                var ambientAirTemperatureMilliC     = await extractTempFromJSON("ambientAirTemperatureMilliC");
+                var engineCoolantTemperatureMilliC  = await extractTempFromJSON("engineCoolantTemperatureMilliC");
+                
+                var sensorTrace = {
+                    y: [sensor],
+                    mode: 'lines+markers',
+                    name: "Sensor"
+                };
+
+                var ambientAirTemperatureMilliCTrace = {
+                    y: [ambientAirTemperatureMilliC],
+                    mode: 'lines+markers',
+                    name: "Ambient Air"
+                };
+
+                var engineCoolantTemperatureMilliCTrace = {
+                    y: [engineCoolantTemperatureMilliC],
+                    mode: 'lines+markers',
+                    name: "Engine Coolant"
+                };
+
+                return [sensorTrace, ambientAirTemperatureMilliCTrace, engineCoolantTemperatureMilliCTrace];
+
                 //return Math.random();
                 
             }  
 
-            Plotly.newPlot('graph', [{ y: [0], type: 'scatter', mode: 'lines' }]); // creates a new line scatter plot, with y as the data
+            var miscLayout = {
+                title:'Samsara API Line Plot'
+            };
             
-            //var cnt = 0; 
+            Plotly.newPlot('graph', getData(), miscLayout); // creates a new line scatter plot, with y as the data
+            
+            //var cnt = 0; // not used currently. Would count setInterval function calls
 
             setInterval(async function(){ 
 
-                Plotly.extendTraces('graph', { y: [[ await getData() ]] }, [0] ); //basically this allows real time data, by extending data onto existing data array
-                plotXScale++;
-
+                Plotly.extendTraces('graph', { y: [ getData() ] }, [0, 1, 2] ); //basically this allows real time data, by extending data onto existing data array
+                
+                //plotXScale++;
                 //if(cnt > 20) {
                 //    Plotly.relayout('graph', { xaxis: { range: [plotXScale-5, plotXScale+5] } } ); //provides a glide effect on x axis once we reach a certain size
                 //}
+
             },
             5000); //milliseconds -> sets the pull data interval to every 5 seconds
         </script>
