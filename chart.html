@@ -24,6 +24,12 @@
                 var miscProperties = { // setting the additional misc properties
                     title:'Samsara API Line Plot',
                     mode: 'lines+markers',
+                    xaxis: {
+                        title: 'Call # (1 = ~5 seconds)'
+                    },
+                    yaxis: {
+                        title: 'Temperature (F)'
+                    }
                 }; 
 
                 var temp1 = await getData("ambientAirTemperatureMilliC"); // calls get data function with the switch case, passing the tempType for the switch case
