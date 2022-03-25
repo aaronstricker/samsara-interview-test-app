@@ -1,5 +1,7 @@
 # samsara-interview-test-app
 
+Link to github: https://github.com/aaronstricker/samsara-interview-test-app
+
 Graphs real time data from the Samsara API using plotly to plot the data. 
 
 Samsara: https://developers.samsara.com/reference/overview
