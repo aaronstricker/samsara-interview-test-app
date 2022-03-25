@@ -12,3 +12,6 @@ Run in cmd before starting local server
 lcp --proxyUrl https://api.samsara.com
 ```
 See https://github.com/garmeeh/local-cors-proxy for more information
+
+Preview of graph:
+![image](https://user-images.githubusercontent.com/29259191/160053094-fd3e4a00-a6c7-472d-a039-ce84bf9f1ff4.png)
